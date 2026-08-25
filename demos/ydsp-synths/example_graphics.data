@@ -1825,6 +1825,9 @@ processor WaveLabVoice {
                           * (1.0 + 0.02888113 * smooth (modWheel, 0.05) * sin (vibratoPhase * 2.0 * pi));
 
         float dt = freq * pitchFactor * samplePeriod;
+        float ratio = pow (2.0, detune / 1200.0);
+        float dtB = dt * ratio;
+        float dtC = dt / ratio;
 
         phase = phase + dt;
         if (phase >= 1.0) { phase = phase - 1.0; }
@@ -1834,24 +1837,23 @@ processor WaveLabVoice {
         if (phaseC >= 1.0) { phaseC = phaseC - 1.0; }
 
         float osc = 0.0;
+        float falling = phase < width ? phase - width + 1.0 : phase - width;
 
         float sel = select (progSet != 0, float (progWave), wave);
         if (sel < 0.5) {
             float saw = 2.0 * phase - 1.0 - polyBlep (phase, dt);
             osc = saw;
         } else if (sel < 1.5) {
-            float falling = phase < width ? phase - width + 1.0 : phase - width;
-            float pulse = (phase < width ? 1.0 : -1.0)
-                        + polyBlep (phase, dt)
-                        - polyBlep (falling, dt);
-            osc = pulse;
+            float square = (phase < width ? 1.0 : -1.0)
+                         + polyBlep (phase, dt)
+                         - polyBlep (falling, dt);
+            osc = square;
         } else if (sel < 2.5) {
             float triCorr = blepInt (phase, dt)
                           - (select (phase < 0.5, blepInt (phase + 0.5, dt), blepInt (phase - 0.5, dt)) + dt / 3.0);
             float tri = select (phase < 0.5, 1.0 - 4.0 * phase, 4.0 * phase - 3.0) - 4.0 * triCorr;
             osc = tri;
         } else if (sel < 3.5) {
-            float falling = phase < width ? phase - width + 1.0 : phase - width;
             float pulse = (phase < width ? 1.0 : -1.0)
                         + polyBlep (phase, dt)
                         - polyBlep (falling, dt);
@@ -1860,9 +1862,6 @@ processor WaveLabVoice {
             float noise = float (rng >> 8) * 1.1920929e-7;
             osc = noise;
         } else {
-            float ratio = pow (2.0, detune / 1200.0);
-            float dtB = dt * ratio;
-            float dtC = dt / ratio;
             float sawA = 2.0 * phase - 1.0 - polyBlep (phase, dt);
             float sawB = 2.0 * phaseB - 1.0 - polyBlep (phaseB, dtB);
             float sawC = 2.0 * phaseC - 1.0 - polyBlep (phaseC, dtC);
